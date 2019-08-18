@@ -1,5 +1,7 @@
 # Configuration for training
 training_parameters:
+    # Name of the trainer class used to define the training/evalution loop
+    trainer: 'base_trainer'
     # Name of the experiment, will be used while saving checkpoints
     # and generating reports
     experiment_name: run
@@ -28,7 +30,7 @@ training_parameters:
     device: cuda
     # Seed to be used for training. -1 means random seed.
     # Either pass fixed through your config or command line arguments
-    seed: -1
+    seed: null
     # Size of each batch. If distributed or data_parallel
     # is used, this will be divided equally among GPUs
     batch_size: 512
@@ -43,7 +45,7 @@ training_parameters:
     # loss will monitor combined loss from all of the tasks
     # Usually, it will be of the form `dataset_metric`
     # for e.g. vqa2_vqa_accuracy
-    monitored_metric: loss
+    monitored_metric: total_loss
     # Whether the monitored metric should be minimized for early stopping
     # or not, for e.g. you would want to minimize loss but maximize accuracy
     metric_minimize: true
@@ -107,6 +109,9 @@ training_parameters:
     resume_file: null
     # Whether to pin memory in dataloader
     pin_memory: false
+
+    # Use in multi-tasking, when you want to sample tasks proportional to their sizes
+    task_size_proportional_sampling: true
 
 # Attributes for model, default configuration files for various models
 # included in pythia can be found under configs directory in root folder

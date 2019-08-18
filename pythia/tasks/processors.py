@@ -72,9 +72,9 @@ Example::
             text = [t.strip() for t in text.split(" ")]
             return {"text": text}
 """
+import multiprocessing
 import os
 import warnings
-import multiprocessing
 from collections import Counter
 
 import torch
@@ -96,6 +96,7 @@ class BaseProcessor:
                              `params` attributes if available.
 
     """
+
     def __init__(self, config, *args, **kwargs):
         return
 
@@ -125,6 +126,7 @@ class Processor:
                              be initialized and ``params`` of that procesor.
 
     """
+
     def __init__(self, config, *args, **kwargs):
         self.writer = registry.get("writer")
 
@@ -149,8 +151,8 @@ class Processor:
 
         self._dir_representation = dir(self)
 
-    def __call__(self, item):
-        return self.processor(item)
+    def __call__(self, item, *args, **kwargs):
+        return self.processor(item, *args, **kwargs)
 
     def __getattr__(self, name):
         if name in self._dir_representation:
@@ -196,6 +198,7 @@ class VocabProcessor(BaseProcessor):
         vocab (Vocab): Vocab class object which is abstraction over the vocab
                        file passed.
     """
+
     MAX_LENGTH_DEFAULT = 50
     PAD_TOKEN = "<pad>"
     PAD_INDEX = 0
@@ -203,7 +206,7 @@ class VocabProcessor(BaseProcessor):
     def __init__(self, config, *args, **kwargs):
         if not hasattr(config, "vocab"):
             raise AttributeError(
-                "config passed to the processor has no " "attribute vocab"
+                "config passed to the processor has no attribute vocab"
             )
 
         self.vocab = Vocab(*args, **config.vocab, **kwargs)
@@ -321,10 +324,11 @@ class GloVeProcessor(VocabProcessor):
                              :func:`~VocabProcessor`.
 
     """
+
     def __init__(self, config, *args, **kwargs):
         if not hasattr(config, "vocab"):
             raise AttributeError(
-                "Config passed to the processor has no " "attribute vocab"
+                "Config passed to the processor has no attribute vocab"
             )
         vocab_processor_config = ConfigNode(config)
         # GloVeProcessor needs vocab type to be "intersected"
@@ -360,6 +364,7 @@ class FastTextProcessor(VocabProcessor):
         config (ConfigNode): Configuration values for the processor.
 
     """
+
     def __init__(self, config, *args, **kwargs):
         self._init_extras(config)
         self.config = config
@@ -409,14 +414,13 @@ class FastTextProcessor(VocabProcessor):
             get_pythia_root(), ".vector_cache", "wiki.en.bin"
         )
 
-        if is_main_process:
+        if not is_main_process:
             return model_file_path
 
         if os.path.exists(model_file_path):
             if is_main_process:
                 self.writer.write(
-                    "Vectors already present at {}.".format(model_file_path),
-                    "info"
+                    "Vectors already present at {}.".format(model_file_path), "info"
                 )
             return model_file_path
 
@@ -428,8 +432,11 @@ class FastTextProcessor(VocabProcessor):
         response = requests.get(FASTTEXT_WIKI_URL, stream=True)
 
         with open(model_file_path, "wb") as f:
-            pbar = tqdm(total=int(response.headers['Content-Length']) / 4096,
-                        miniters=50, disable=not is_main_process)
+            pbar = tqdm(
+                total=int(response.headers["Content-Length"]) / 4096,
+                miniters=50,
+                disable=not is_main_process,
+            )
 
             idx = 0
             for data in response.iter_content(chunk_size=4096):
@@ -442,8 +449,9 @@ class FastTextProcessor(VocabProcessor):
             pbar.close()
 
         if is_main_process:
-            self.writer.write("fastText bin downloaded at {}."
-                              .format(model_file_path), "info")
+            self.writer.write(
+                "fastText bin downloaded at {}.".format(model_file_path), "info"
+            )
 
         return model_file_path
 
@@ -453,8 +461,7 @@ class FastTextProcessor(VocabProcessor):
         is_main_process = self._is_main_process()
 
         if is_main_process:
-            self.writer.write("Loading fasttext model now from %s" %
-                              model_file)
+            self.writer.write("Loading fasttext model now from %s" % model_file)
 
         self.model = load_model(model_file)
         # String to Vector
@@ -501,6 +508,7 @@ class VQAAnswerProcessor(BaseProcessor):
     Attributes:
         answer_vocab (VocabDict): Class representing answer vocabulary
     """
+
     DEFAULT_NUM_ANSWERS = 10
 
     def __init__(self, config, *args, **kwargs):
@@ -569,7 +577,7 @@ class VQAAnswerProcessor(BaseProcessor):
                 " to answer processor in a dict"
             )
 
-        answers_indices = torch.zeros(self.num_answers, dtype=torch.int)
+        answers_indices = torch.zeros(self.num_answers, dtype=torch.long)
         answers_indices.fill_(self.answer_vocab.get_unk_index())
 
         for idx, token in enumerate(tokens):
@@ -657,6 +665,18 @@ class VQAAnswerProcessor(BaseProcessor):
         return scores
 
 
+@registry.register_processor("multi_hot_answer_from_vocab")
+class MultiHotAnswerFromVocabProcessor(VQAAnswerProcessor):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(config, *args, **kwargs)
+
+    def compute_answers_scores(self, answers_indices):
+        scores = torch.zeros(self.get_vocab_size(), dtype=torch.float)
+        scores[answers_indices] = 1
+        scores[self.answer_vocab.UNK_INDEX] = 0
+        return scores
+
+
 @registry.register_processor("soft_copy_answer")
 class SoftCopyAnswerProcessor(VQAAnswerProcessor):
     """Similar to Answer Processor but adds soft copy dynamic answer space to it.
@@ -667,6 +687,7 @@ class SoftCopyAnswerProcessor(VQAAnswerProcessor):
         config (ConfigNode): Configuration for soft copy processor.
 
     """
+
     DEFAULT_MAX_LENGTH = 50
 
     def __init__(self, config, *args, **kwargs):
@@ -759,13 +780,14 @@ class SimpleWordProcessor(BaseProcessor):
         tokenizer (function): Type of tokenizer to be used.
 
     """
+
     def __init__(self, *args, **kwargs):
         from pythia.utils.text_utils import word_tokenize
 
         self.tokenizer = word_tokenize
 
-    def __call__(self, item):
-        return {"text": self.tokenizer(item["text"])}
+    def __call__(self, item, *args, **kwargs):
+        return {"text": self.tokenizer(item["text"], *args, **kwargs)}
 
 
 @registry.register_processor("simple_sentence")
@@ -776,13 +798,14 @@ class SimpleSentenceProcessor(BaseProcessor):
         tokenizer (function): Type of tokenizer to be used.
 
     """
+
     def __init__(self, *args, **kwargs):
         from pythia.utils.text_utils import tokenize
 
         self.tokenizer = tokenize
 
-    def __call__(self, item):
-        return {"text": self.tokenizer(item["text"])}
+    def __call__(self, item, *args, **kwargs):
+        return {"text": self.tokenizer(item["text"], *args, **kwargs)}
 
 
 @registry.register_processor("bbox")
@@ -822,6 +845,7 @@ class BBoxProcessor(VocabProcessor):
         })
 
     """
+
     def __init__(self, config, *args, **kwargs):
         from pythia.utils.dataset_utils import build_bbox_tensors
 
@@ -834,3 +858,35 @@ class BBoxProcessor(VocabProcessor):
             info = self.preprocessor(info)
 
         return {"bbox": self.lambda_fn(info, self.max_length)}
+
+
+@registry.register_processor("caption")
+class CaptionProcessor(BaseProcessor):
+    """Processes a caption with start, end and pad tokens and returns raw string.
+
+    Args:
+        config (ConfigNode): Configuration for caption processor.
+
+    """
+
+    def __init__(self,  config, *args, **kwargs):
+        if not hasattr(config, "vocab"):
+            raise AttributeError(
+                "config passed to the processor has no " "attribute vocab"
+            )
+
+        self.vocab = Vocab(*args, **config.vocab, **kwargs)
+
+    def __call__(self, item):
+        for idx, v in enumerate(item):
+            if v == self.vocab.EOS_INDEX:
+                item = item[:idx]
+                break
+        tokens = [
+            self.vocab.get_itos()[w]
+            for w in item
+            if w
+            not in {self.vocab.SOS_INDEX, self.vocab.EOS_INDEX, self.vocab.PAD_INDEX}
+        ]
+        caption = " ".join(tokens)
+        return {"tokens": tokens, "caption": caption}

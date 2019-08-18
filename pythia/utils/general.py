@@ -4,10 +4,16 @@ import gc
 import os
 from bisect import bisect
 
+import requests
 import torch
+import tqdm
 import yaml
+import tarfile
+import zipfile
+
 from torch import nn
 
+from pythia.common.constants import DOWNLOAD_CHUNK_SIZE
 
 def lr_lambda_update(i_iter, cfg):
     if (
@@ -46,13 +52,18 @@ def clip_gradients(model, i_iter, writer, config):
 
 
 def ckpt_name_from_core_args(config):
-    return "%s_%s_%s_%d" % (
+    seed = config["training_parameters"]["seed"]
+
+    ckpt_name = "{}_{}_{}".format(
         config["tasks"],
         config["datasets"],
-        config["model"],
-        config["training_parameters"]["seed"],
+        config["model"]
     )
 
+    if seed is not None:
+        ckpt_name += "_{:d}".format(seed)
+
+    return ckpt_name
 
 def foldername_from_config_override(args):
     cfg_override = None
@@ -83,6 +94,32 @@ def get_pythia_root():
     return pythia_root
 
 
+def download_file(url, output_dir=".", filename=""):
+    if len(filename) == 0:
+        filename = os.path.join(".", url.split("/")[-1])
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = os.path.join(output_dir, filename)
+    r = requests.get(url, stream=True)
+
+    if r.status_code != requests.codes['ok']:
+        print("The url {} is broken. If this is not your own url,"
+              " please open up an issue on GitHub.".format(url))
+    file_size = int(r.headers["Content-Length"])
+    num_bars = int(file_size / DOWNLOAD_CHUNK_SIZE)
+
+    with open(filename, "wb") as fh:
+        for chunk in tqdm.tqdm(
+            r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE),
+            total=num_bars,
+            unit="MB",
+            desc=filename,
+            leave=True,
+        ):
+            fh.write(chunk)
+
+
 def get_optimizer_parameters(model, config):
     parameters = model.parameters()
 
@@ -90,7 +127,8 @@ def get_optimizer_parameters(model, config):
     if has_custom:
         parameters = model.get_optimizer_parameters(config)
 
-    is_parallel = isinstance(model, nn.DataParallel)
+    is_parallel = (isinstance(model, nn.DataParallel) or
+        isinstance(model, nn.parallel.DistributedDataParallel))
 
     if is_parallel and hasattr(model.module, "get_optimizer_parameters"):
         parameters = model.module.get_optimizer_parameters(config)
@@ -167,3 +205,26 @@ def get_current_tensors():
                 print(type(obj), obj.size())
         except:
             pass
+
+
+def extract_file(path, output_dir="."):
+    _FILETYPE_TO_OPENER_MODE_MAPPING = {
+        ".zip": (zipfile.ZipFile, "r"),
+        ".tar.gz": (tarfile.open, "r:gz"),
+        ".tgz": (tarfile.open, "r:gz"),
+        ".tar": (tarfile.open, "r:"),
+        ".tar.bz2": (tarfile.open, "r:bz2"),
+        ".tbz": (tarfile.open, "r:bz2"),
+    }
+
+    cwd = os.getcwd()
+    os.chdir(output_dir)
+
+    extension = "." + ".".join(os.path.abspath(path).split(".")[1:])
+
+    opener, mode = _FILETYPE_TO_OPENER_MODE_MAPPING[extension]
+    with opener(path, mode) as f:
+        f.extractall()
+
+    os.chdir(cwd)
+    return output_dir

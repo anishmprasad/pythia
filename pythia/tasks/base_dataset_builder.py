@@ -35,6 +35,8 @@ Example::
 .. _here: https://github.com/facebookresearch/pythia/blob/v0.3/pythia/tasks/vqa/vqa2/builder.py
 """
 
+from pythia.utils.distributed_utils import is_main_process, synchronize
+
 
 class BaseDatasetBuilder:
     """Base class for implementing dataset builders. See more information
@@ -43,6 +45,7 @@ class BaseDatasetBuilder:
     Args:
         dataset_name (str): Name of the dataset passed from child.
     """
+
     def __init__(self, dataset_name):
         self.dataset_name = dataset_name
 
@@ -63,8 +66,9 @@ class BaseDatasetBuilder:
             DO NOT OVERRIDE in child class. Instead override ``_load``.
         """
         dataset = self._load(dataset_type, config, *args, **kwargs)
-        dataset.init_processors()
-        dataset.try_fast_read()
+        if dataset is not None:
+            dataset.init_processors()
+            dataset.try_fast_read()
         return dataset
 
     def _load(self, dataset_type, config, *args, **kwargs):
@@ -80,7 +84,7 @@ class BaseDatasetBuilder:
             dataset (BaseDataset): Dataset containing data to be trained on
         """
         raise NotImplementedError(
-            "This dataset builder doesn't implement a " "load method"
+            "This dataset builder doesn't implement a load method"
         )
 
     def build(self, dataset_type, config, *args, **kwargs):
@@ -98,9 +102,10 @@ class BaseDatasetBuilder:
 
             DO NOT OVERRIDE in child class. Instead override ``_build``.
         """
-        # TODO: Once we start building we will do some preprocessing for folder
-        # structure and other things here
-        self._build(dataset_type, config, *args, **kwargs)
+        # Only build in main process, so none of the others have to build
+        if is_main_process():
+            self._build(dataset_type, config, *args, **kwargs)
+        synchronize()
 
     def _build(self, dataset_type, config, *args, **kwargs):
         """
@@ -113,5 +118,5 @@ class BaseDatasetBuilder:
                                  config.
         """
         raise NotImplementedError(
-            "This dataset builder doesn't implement a " "build method"
+            "This dataset builder doesn't implement a build method"
         )

@@ -1,4 +1,4 @@
-# Quickstart [![](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Z9fsh10rFtgWe4uy8nvU4mQmqdokdIRR)[![](https://circleci.com/gh/facebookresearch/pythia.svg?style=svg)](https://circleci.com/gh/facebookresearch/pythia)
+# Quickstart [![](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Z9fsh10rFtgWe4uy8nvU4mQmqdokdIRR) [![](https://circleci.com/gh/facebookresearch/pythia.svg?style=svg)](https://circleci.com/gh/facebookresearch/pythia)
 
 
 **Authors**: Amanpreet Singh
@@ -8,7 +8,8 @@ to train other models in Pythia.
 
 ## Demo
 
-Try the demo for Pythia model on [Colab](https://colab.research.google.com/drive/1Z9fsh10rFtgWe4uy8nvU4mQmqdokdIRR).
+1. [Pythia VQA](https://colab.research.google.com/drive/1Z9fsh10rFtgWe4uy8nvU4mQmqdokdIRR) 
+2. [BUTD Captioning](https://colab.research.google.com/drive/1vzrxDYB0vxtuUy8KCaGxm--nDCJvyBSg)
 
 ## Installation
 
@@ -107,6 +108,43 @@ then run `python setup.py develop`. To install fastText run following commands:
 git clone https://github.com/facebookresearch/fastText.git
 cd fastText
 pip install -e .
+```
+
+## Tasks and Datasets
+
+```eval_rst
+
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| Dataset      | Key           | Task       | ImDB Link                                                                              | Features Link                                                                   | Features checksum                  | Notes                      |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| TextVQA      | textvqa       | vqa        | `TextVQA 0.5 ImDB`_                                                                    | `OpenImages`_                                                                   | `b22e80997b2580edaf08d7e3a896e324` |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| VQA 2.0      | vqa2          | vqa        | `VQA 2.0 ImDB`_                                                                        | `COCO`_                                                                         | `ab7947b04f3063c774b87dfbf4d0e981` |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| VizWiz       | vizwiz        | vqa        | `VizWiz ImDB`_                                                                         | `VizWiz`_                                                                       | `9a28d6a9892dda8519d03fba52fb899f` |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| VisualDialog | visdial       | dialog     | Coming soon!                                                                           | Coming soon!                                                                    | Coming soon!                       |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| VisualGenome | visual_genome | vqa        | Automatically downloaded                                                               | Automatically downloaded                                                        | Coming soon!                       | Also supports scene graphs |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| CLEVR        | clevr         | vqa        | Automatically downloaded                                                               | Automatically downloaded                                                        |                                    |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+| MS COCO      | coco          | captioning | `COCO Caption`_                                                                        | `COCO`_                                                                         | `ab7947b04f3063c774b87dfbf4d0e981` |                            |
++--------------+---------------+------------+----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+------------------------------------+----------------------------+
+
+.. _TextVQA 0.5 ImDB: https://dl.fbaipublicfiles.com/pythia/data/imdb/textvqa_0.5.tar.gz
+.. _OpenImages: https://dl.fbaipublicfiles.com/pythia/features/open_images.tar.gz
+.. _COCO: https://dl.fbaipublicfiles.com/pythia/features/coco.tar.gz
+.. _VQA 2.0 ImDB: https://dl.fbaipublicfiles.com/pythia/data/imdb/vqa.tar.gz
+.. _VizWiz: https://dl.fbaipublicfiles.com/pythia/features/vizwiz.tar.gz
+.. _VizWiz ImDB: https://dl.fbaipublicfiles.com/pythia/data/imdb/vizwiz.tar.gz
+.. _COCO Caption: https://dl.fbaipublicfiles.com/pythia/data/imdb/coco_captions.tar.gz
+```
+
+After downloading the features, verify the download by checking the md5sum using 
+
+```bash
+echo "<checksum>  <dataset_name>.tar.gz" | md5sum -c -
 ```
 
 ## Next steps

@@ -35,6 +35,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from pythia.common.registry import registry
+from pythia.utils.distributed_utils import synchronize, is_main_process
 
 
 class BaseTask(Dataset):
@@ -47,6 +48,7 @@ class BaseTask(Dataset):
     Args:
         task_name (str): Name of the task with which it will be registered
     """
+
     def __init__(self, task_name):
         super(BaseTask, self).__init__()
         self.task_name = task_name
@@ -108,6 +110,9 @@ class BaseTask(Dataset):
                 dataset_type = self.opts.get("dataset_type", "train")
                 builder_instance.build(dataset_type, attributes)
                 dataset_instance = builder_instance.load(dataset_type, attributes)
+
+                if dataset_instance is None:
+                    continue
 
                 self.builders.append(builder_instance)
                 self.datasets.append(dataset_instance)
